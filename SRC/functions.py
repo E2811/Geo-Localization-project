@@ -100,7 +100,7 @@ def haversine(lat1, lon1, lat2, lon2):
 
 ''' Ponderate the distances accordying to the company preferences '''
 def ponderation(rate,distance):
-    return round(distance*rate/5,2)
+    return round(distance*5/rate,2)
 
 ''' Obtain coordinates in each collection to map it ''' 
 def checkcoordinates(collection):
