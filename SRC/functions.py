@@ -114,3 +114,11 @@ def createGeo(collection):
     df['lat'] = df.apply(lambda row: row['coordinates'][1], axis=1)
     layer = GeoDataFrame(df, geometry=points_from_xy(df['lng'], df['lat']))
     return layer
+
+def map(collection, col):
+    c =list(collection.find({f"{col}.coordinates":{"$exists":True}}))
+    df= pd.DataFrame(c)
+    df = df[[col]].apply(lambda r: r[col], result_type="expand", axis=1)
+    df['lng'] = df.apply(lambda row: row['coordinates'][0], axis=1)
+    df['lat'] = df.apply(lambda row: row['coordinates'][1], axis=1)
+    return df 
