@@ -7,21 +7,18 @@ from geopandas import GeoDataFrame, points_from_xy
 from dotenv import load_dotenv
 load_dotenv()
 
-'''Conect to Mongo database and collection'''
-def connectMongo(collection):
-    client = MongoClient("mongodb://localhost/companies")
-    db = client.get_database()
-    coll = db[collection]
-    return db, coll
 
-def CleanDataFrame(df, col):
+
+def cleanDataFrame(df, col):
+    ''' Clean DataFrame '''
     df = df.explode(col)
     dfexpandedData = df[[col]].apply(lambda r: r[col], result_type="expand", axis=1)
     cleanData = pd.concat([df,dfexpandedData], axis=1)
     return cleanData
 
-'''creates locations in geojson format'''
+
 def asGeoJSON(long,lat):
+    '''creates locations in geojson format'''
     try:
         location = {'type':'Point',
             'coordinates':[float(long), float(lat)]}
@@ -29,13 +26,14 @@ def asGeoJSON(long,lat):
     except:
         return None 
 
-''' replace the location (geoson format) in a collection '''
+
 def insertGeoLocation(long,lat,collection,i):
+    ''' replace the location (geoson format) in a collection '''
     geocode = {"$set": {'location':asGeoJSON(long,lat)}}
     collection.update_one(i,geocode)
 
-''' Creates the geoquery '''
 def WithgeoQuery(location, maxDistance=10000, minDistance=0, field="location"):
+    ''' Creates the geoquery '''
     return {
        field: {
          "$near": {
@@ -50,25 +48,24 @@ def geoQuery(collection, location):
     result = collection.find(query).limit(1)
     return list(result)
 
-''' Make a request to google API and return it in a json fomat ''' 
+
 def authotization():
+    ''' Make a request to google API and return it in a json fomat ''' 
     token = os.getenv("API_KEY")
     if not token:
         raise ValueError("You must set an APIKEY token")
     return token
 
-def googleApi(query, pagetoken=None):
+def googleApi(query):
     google_api_key = authotization()
     url = f'https://maps.googleapis.com/maps/api/place/nearbysearch/json?{query}'
     print(url)
-    if pagetoken:
-        url += f'&pagetoken={pagetoken}'
-        print('pagetoken')
     res = requests.get(url+f'&key={google_api_key}')
     return res
 
-''' Remove rows which does not fullfil the requirements ''' 
+
 def nonempty(df):
+    ''' Remove rows which does not fullfil the requirements ''' 
     return len(df)>0
 
 
@@ -88,8 +85,8 @@ def near_place(df, radius, keyword,coll,lista):
             coll.insert_one(dic)
     return lista
 
-''' Haversine distance ''' 
 def haversine(lat1, lon1, lat2, lon2):
+''' Haversine distance ''' 
     rad=math.pi/180
     dlat=lat2 -lat1
     dlon=lon2-lon1
@@ -98,16 +95,16 @@ def haversine(lat1, lon1, lat2, lon2):
     distancia=2*R*math.asin(math.sqrt(a))
     return distancia 
 
-''' Ponderate the distances accordying to the company preferences '''
+
 def ponderation(rate,distance):
+    ''' Ponderate the distances accordying to the company preferences '''
     return round(distance*5/rate,2)
 
-''' Obtain coordinates in each collection to map it ''' 
-def checkcoordinates(collection):
-    return list(collection.find({"location.coordinates":{"$exists":True}}))
+
+''' Obtain coordinates in each collection to map it (first for carto, then for folium)''' 
 
 def createGeo(collection):
-    c = checkcoordinates(collection)
+    c = list(collection.find({"location.coordinates":{"$exists":True}}))
     df= pd.DataFrame(c)
     df = df[['location']].apply(lambda r: r['location'], result_type="expand", axis=1)
     df['lng'] = df.apply(lambda row: row['coordinates'][0], axis=1)
